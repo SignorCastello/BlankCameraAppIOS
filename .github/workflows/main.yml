@@ -9,24 +9,495 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       
-      - name: Set up Xcode project
+      - name: Set up project structure
         run: |
-          mkdir -p ShutdownApp.xcodeproj
-          # Create a minimal project structure
-          xcodebuild -create-xcodeproj -project ShutdownApp.xcodeproj
+          # Create directories
+          mkdir -p ShutdownApp/ShutdownApp
           
-      - name: Build unsigned app
+          # Create AppDelegate
+          cat > ShutdownApp/ShutdownApp/AppDelegate.swift << 'EOF'
+          import UIKit
+          
+          @main
+          class AppDelegate: UIResponder, UIApplicationDelegate {
+              var window: UIWindow?
+              
+              func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+                  window = UIWindow(frame: UIScreen.main.bounds)
+                  window?.rootViewController = ViewController()
+                  window?.makeKeyAndVisible()
+                  return true
+              }
+          }
+          EOF
+          
+          # Create ViewController
+          cat > ShutdownApp/ShutdownApp/ViewController.swift << 'EOF'
+          import UIKit
+          
+          class ViewController: UIViewController {
+              private let shutdownButton = UIButton(type: .system)
+              private var serverURL = "http://your-server-ip:5000/shutdown"
+              
+              override func viewDidLoad() {
+                  super.viewDidLoad()
+                  view.backgroundColor = .white
+                  
+                  shutdownButton.setTitle("Send Shutdown Signal", for: .normal)
+                  shutdownButton.backgroundColor = .systemRed
+                  shutdownButton.setTitleColor(.white, for: .normal)
+                  shutdownButton.layer.cornerRadius = 10
+                  shutdownButton.addTarget(self, action: #selector(sendShutdownSignal), for: .touchUpInside)
+                  shutdownButton.translatesAutoresizingMaskIntoConstraints = false
+                  view.addSubview(shutdownButton)
+                  
+                  NSLayoutConstraint.activate([
+                      shutdownButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                      shutdownButton.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                      shutdownButton.widthAnchor.constraint(equalToConstant: 250),
+                      shutdownButton.heightAnchor.constraint(equalToConstant: 60)
+                  ])
+              }
+              
+              @objc private func sendShutdownSignal() {
+                  guard let url = URL(string: serverURL) else {
+                      showAlert(message: "Invalid URL")
+                      return
+                  }
+                  
+                  var request = URLRequest(url: url)
+                  request.httpMethod = "POST"
+                  request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                  
+                  let payload: [String: String] = ["status": "dark"]
+                  
+                  do {
+                      request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+                  } catch {
+                      showAlert(message: "Error creating request: \(error.localizedDescription)")
+                      return
+                  }
+                  
+                  URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+                      DispatchQueue.main.async {
+                          if let error = error {
+                              self?.showAlert(message: "Error: \(error.localizedDescription)")
+                              return
+                          }
+                          
+                          guard let httpResponse = response as? HTTPURLResponse else {
+                              self?.showAlert(message: "Invalid response")
+                              return
+                          }
+                          
+                          if httpResponse.statusCode == 200 {
+                              self?.showAlert(message: "Shutdown signal sent successfully")
+                          } else {
+                              self?.showAlert(message: "Failed with status code: \(httpResponse.statusCode)")
+                          }
+                      }
+                  }.resume()
+              }
+              
+              private func showAlert(message: String) {
+                  let alert = UIAlertController(title: "Notification", message: message, preferredStyle: .alert)
+                  alert.addAction(UIAlertAction(title: "OK", style: .default))
+                  present(alert, animated: true)
+              }
+          }
+          EOF
+          
+          # Create Info.plist
+          cat > ShutdownApp/ShutdownApp/Info.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>$(DEVELOPMENT_LANGUAGE)</string>
+              <key>CFBundleExecutable</key>
+              <string>$(EXECUTABLE_NAME)</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.example.ShutdownApp</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>$(PRODUCT_NAME)</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+              <key>UIApplicationSupportsIndirectInputEvents</key>
+              <true/>
+              <key>NSAppTransportSecurity</key>
+              <dict>
+                  <key>NSAllowsArbitraryLoads</key>
+                  <true/>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+          
+          # Create project.pbxproj file
+          mkdir -p ShutdownApp/ShutdownApp.xcodeproj
+          cat > ShutdownApp/ShutdownApp.xcodeproj/project.pbxproj << 'EOF'
+          // !$*UTF8*$!
+          {
+          	archiveVersion = 1;
+          	classes = {
+          	};
+          	objectVersion = 56;
+          	objects = {
+          
+          /* Begin PBXBuildFile section */
+          		8413A8A32B5D8D4F00128D85 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8413A8A22B5D8D4F00128D85 /* AppDelegate.swift */; };
+          		8413A8A72B5D8D4F00128D85 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8413A8A62B5D8D4F00128D85 /* ViewController.swift */; };
+          /* End PBXBuildFile section */
+          
+          /* Begin PBXFileReference section */
+          		8413A89F2B5D8D4F00128D85 /* ShutdownApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShutdownApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+          		8413A8A22B5D8D4F00128D85 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+          		8413A8A62B5D8D4F00128D85 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+          		8413A8B02B5D8D5000128D85 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+          /* End PBXFileReference section */
+          
+          /* Begin PBXFrameworksBuildPhase section */
+          		8413A89C2B5D8D4F00128D85 /* Frameworks */ = {
+          			isa = PBXFrameworksBuildPhase;
+          			buildActionMask = 2147483647;
+          			files = (
+          			);
+          			runOnlyForDeploymentPostprocessing = 0;
+          		};
+          /* End PBXFrameworksBuildPhase section */
+          
+          /* Begin PBXGroup section */
+          		8413A8962B5D8D4F00128D85 = {
+          			isa = PBXGroup;
+          			children = (
+          				8413A8A12B5D8D4F00128D85 /* ShutdownApp */,
+          				8413A8A02B5D8D4F00128D85 /* Products */,
+          			);
+          			sourceTree = "<group>";
+          		};
+          		8413A8A02B5D8D4F00128D85 /* Products */ = {
+          			isa = PBXGroup;
+          			children = (
+          				8413A89F2B5D8D4F00128D85 /* ShutdownApp.app */,
+          			);
+          			name = Products;
+          			sourceTree = "<group>";
+          		};
+          		8413A8A12B5D8D4F00128D85 /* ShutdownApp */ = {
+          			isa = PBXGroup;
+          			children = (
+          				8413A8A22B5D8D4F00128D85 /* AppDelegate.swift */,
+          				8413A8A62B5D8D4F00128D85 /* ViewController.swift */,
+          				8413A8B02B5D8D5000128D85 /* Info.plist */,
+          			);
+          			path = ShutdownApp;
+          			sourceTree = "<group>";
+          		};
+          /* End PBXGroup section */
+          
+          /* Begin PBXNativeTarget section */
+          		8413A89E2B5D8D4F00128D85 /* ShutdownApp */ = {
+          			isa = PBXNativeTarget;
+          			buildConfigurationList = 8413A8B32B5D8D5000128D85 /* Build configuration list for PBXNativeTarget "ShutdownApp" */;
+          			buildPhases = (
+          				8413A89B2B5D8D4F00128D85 /* Sources */,
+          				8413A89C2B5D8D4F00128D85 /* Frameworks */,
+          				8413A89D2B5D8D4F00128D85 /* Resources */,
+          			);
+          			buildRules = (
+          			);
+          			dependencies = (
+          			);
+          			name = ShutdownApp;
+          			productName = ShutdownApp;
+          			productReference = 8413A89F2B5D8D4F00128D85 /* ShutdownApp.app */;
+          			productType = "com.apple.product-type.application";
+          		};
+          /* End PBXNativeTarget section */
+          
+          /* Begin PBXProject section */
+          		8413A8972B5D8D4F00128D85 /* Project object */ = {
+          			isa = PBXProject;
+          			attributes = {
+          				BuildIndependentTargetsInParallel = 1;
+          				LastSwiftUpdateCheck = 1500;
+          				LastUpgradeCheck = 1500;
+          				TargetAttributes = {
+          					8413A89E2B5D8D4F00128D85 = {
+          						CreatedOnToolsVersion = 15.0;
+          					};
+          				};
+          			};
+          			buildConfigurationList = 8413A89A2B5D8D4F00128D85 /* Build configuration list for PBXProject "ShutdownApp" */;
+          			compatibilityVersion = "Xcode 14.0";
+          			developmentRegion = en;
+          			hasScannedForEncodings = 0;
+          			knownRegions = (
+          				en,
+          				Base,
+          			);
+          			mainGroup = 8413A8962B5D8D4F00128D85;
+          			productRefGroup = 8413A8A02B5D8D4F00128D85 /* Products */;
+          			projectDirPath = "";
+          			projectRoot = "";
+          			targets = (
+          				8413A89E2B5D8D4F00128D85 /* ShutdownApp */,
+          			);
+          		};
+          /* End PBXProject section */
+          
+          /* Begin PBXResourcesBuildPhase section */
+          		8413A89D2B5D8D4F00128D85 /* Resources */ = {
+          			isa = PBXResourcesBuildPhase;
+          			buildActionMask = 2147483647;
+          			files = (
+          			);
+          			runOnlyForDeploymentPostprocessing = 0;
+          		};
+          /* End PBXResourcesBuildPhase section */
+          
+          /* Begin PBXSourcesBuildPhase section */
+          		8413A89B2B5D8D4F00128D85 /* Sources */ = {
+          			isa = PBXSourcesBuildPhase;
+          			buildActionMask = 2147483647;
+          			files = (
+          				8413A8A72B5D8D4F00128D85 /* ViewController.swift in Sources */,
+          				8413A8A32B5D8D4F00128D85 /* AppDelegate.swift in Sources */,
+          			);
+          			runOnlyForDeploymentPostprocessing = 0;
+          		};
+          /* End PBXSourcesBuildPhase section */
+          
+          /* Begin XCBuildConfiguration section */
+          		8413A8B12B5D8D5000128D85 /* Debug */ = {
+          			isa = XCBuildConfiguration;
+          			buildSettings = {
+          				ALWAYS_SEARCH_USER_PATHS = NO;
+          				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+          				CLANG_ANALYZER_NONNULL = YES;
+          				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+          				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+          				CLANG_ENABLE_MODULES = YES;
+          				CLANG_ENABLE_OBJC_ARC = YES;
+          				CLANG_ENABLE_OBJC_WEAK = YES;
+          				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+          				CLANG_WARN_BOOL_CONVERSION = YES;
+          				CLANG_WARN_COMMA = YES;
+          				CLANG_WARN_CONSTANT_CONVERSION = YES;
+          				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+          				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+          				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+          				CLANG_WARN_EMPTY_BODY = YES;
+          				CLANG_WARN_ENUM_CONVERSION = YES;
+          				CLANG_WARN_INFINITE_RECURSION = YES;
+          				CLANG_WARN_INT_CONVERSION = YES;
+          				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+          				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+          				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+          				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+          				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+          				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+          				CLANG_WARN_STRICT_PROTOTYPES = YES;
+          				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+          				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+          				CLANG_WARN_UNREACHABLE_CODE = YES;
+          				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+          				COPY_PHASE_STRIP = NO;
+          				DEBUG_INFORMATION_FORMAT = dwarf;
+          				ENABLE_STRICT_OBJC_MSGSEND = YES;
+          				ENABLE_TESTABILITY = YES;
+          				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+          				GCC_C_LANGUAGE_STANDARD = gnu17;
+          				GCC_DYNAMIC_NO_PIC = NO;
+          				GCC_NO_COMMON_BLOCKS = YES;
+          				GCC_OPTIMIZATION_LEVEL = 0;
+          				GCC_PREPROCESSOR_DEFINITIONS = (
+          					"DEBUG=1",
+          					"$(inherited)",
+          				);
+          				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+          				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+          				GCC_WARN_UNDECLARED_SELECTOR = YES;
+          				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+          				GCC_WARN_UNUSED_FUNCTION = YES;
+          				GCC_WARN_UNUSED_VARIABLE = YES;
+          				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+          				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+          				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+          				MTL_FAST_MATH = YES;
+          				ONLY_ACTIVE_ARCH = YES;
+          				SDKROOT = iphoneos;
+          				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+          				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+          			};
+          			name = Debug;
+          		};
+          		8413A8B22B5D8D5000128D85 /* Release */ = {
+          			isa = XCBuildConfiguration;
+          			buildSettings = {
+          				ALWAYS_SEARCH_USER_PATHS = NO;
+          				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+          				CLANG_ANALYZER_NONNULL = YES;
+          				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+          				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+          				CLANG_ENABLE_MODULES = YES;
+          				CLANG_ENABLE_OBJC_ARC = YES;
+          				CLANG_ENABLE_OBJC_WEAK = YES;
+          				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+          				CLANG_WARN_BOOL_CONVERSION = YES;
+          				CLANG_WARN_COMMA = YES;
+          				CLANG_WARN_CONSTANT_CONVERSION = YES;
+          				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+          				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+          				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+          				CLANG_WARN_EMPTY_BODY = YES;
+          				CLANG_WARN_ENUM_CONVERSION = YES;
+          				CLANG_WARN_INFINITE_RECURSION = YES;
+          				CLANG_WARN_INT_CONVERSION = YES;
+          				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+          				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+          				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+          				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+          				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+          				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+          				CLANG_WARN_STRICT_PROTOTYPES = YES;
+          				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+          				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+          				CLANG_WARN_UNREACHABLE_CODE = YES;
+          				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+          				COPY_PHASE_STRIP = NO;
+          				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+          				ENABLE_NS_ASSERTIONS = NO;
+          				ENABLE_STRICT_OBJC_MSGSEND = YES;
+          				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+          				GCC_C_LANGUAGE_STANDARD = gnu17;
+          				GCC_NO_COMMON_BLOCKS = YES;
+          				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+          				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+          				GCC_WARN_UNDECLARED_SELECTOR = YES;
+          				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+          				GCC_WARN_UNUSED_FUNCTION = YES;
+          				GCC_WARN_UNUSED_VARIABLE = YES;
+          				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+          				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+          				MTL_ENABLE_DEBUG_INFO = NO;
+          				MTL_FAST_MATH = YES;
+          				SDKROOT = iphoneos;
+          				SWIFT_COMPILATION_MODE = wholemodule;
+          				VALIDATE_PRODUCT = YES;
+          			};
+          			name = Release;
+          		};
+          		8413A8B32B5D8D5000128D85 /* Debug */ = {
+          			isa = XCBuildConfiguration;
+          			buildSettings = {
+          				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+          				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+          				CODE_SIGN_STYLE = Manual;
+          				CURRENT_PROJECT_VERSION = 1;
+          				DEVELOPMENT_TEAM = "";
+          				GENERATE_INFOPLIST_FILE = YES;
+          				INFOPLIST_FILE = ShutdownApp/Info.plist;
+          				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+          				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+          				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+          				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+          				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+          				LD_RUNPATH_SEARCH_PATHS = (
+          					"$(inherited)",
+          					"@executable_path/Frameworks",
+          				);
+          				MARKETING_VERSION = 1.0;
+          				PRODUCT_BUNDLE_IDENTIFIER = com.example.ShutdownApp;
+          				PRODUCT_NAME = "$(TARGET_NAME)";
+          				PROVISIONING_PROFILE_SPECIFIER = "";
+          				SWIFT_EMIT_LOC_STRINGS = YES;
+          				SWIFT_VERSION = 5.0;
+          				TARGETED_DEVICE_FAMILY = "1,2";
+          			};
+          			name = Debug;
+          		};
+          		8413A8B42B5D8D5000128D85 /* Release */ = {
+          			isa = XCBuildConfiguration;
+          			buildSettings = {
+          				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+          				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+          				CODE_SIGN_STYLE = Manual;
+          				CURRENT_PROJECT_VERSION = 1;
+          				DEVELOPMENT_TEAM = "";
+          				GENERATE_INFOPLIST_FILE = YES;
+          				INFOPLIST_FILE = ShutdownApp/Info.plist;
+          				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+          				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+          				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+          				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+          				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+          				LD_RUNPATH_SEARCH_PATHS = (
+          					"$(inherited)",
+          					"@executable_path/Frameworks",
+          				);
+          				MARKETING_VERSION = 1.0;
+          				PRODUCT_BUNDLE_IDENTIFIER = com.example.ShutdownApp;
+          				PRODUCT_NAME = "$(TARGET_NAME)";
+          				PROVISIONING_PROFILE_SPECIFIER = "";
+          				SWIFT_EMIT_LOC_STRINGS = YES;
+          				SWIFT_VERSION = 5.0;
+          				TARGETED_DEVICE_FAMILY = "1,2";
+          			};
+          			name = Release;
+          		};
+          /* End XCBuildConfiguration section */
+          
+          /* Begin XCConfigurationList section */
+          		8413A89A2B5D8D4F00128D85 /* Build configuration list for PBXProject "ShutdownApp" */ = {
+          			isa = XCConfigurationList;
+          			buildConfigurations = (
+          				8413A8B12B5D8D5000128D85 /* Debug */,
+          				8413A8B22B5D8D5000128D85 /* Release */,
+          			);
+          			defaultConfigurationIsVisible = 0;
+          			defaultConfigurationName = Release;
+          		};
+          		8413A8B32B5D8D5000128D85 /* Build configuration list for PBXNativeTarget "ShutdownApp" */ = {
+          			isa = XCConfigurationList;
+          			buildConfigurations = (
+          				8413A8B32B5D8D5000128D85 /* Debug */,
+          				8413A8B42B5D8D5000128D85 /* Release */,
+          			);
+          			defaultConfigurationIsVisible = 0;
+          			defaultConfigurationName = Release;
+          		};
+          /* End XCConfigurationList section */
+          	};
+          	rootObject = 8413A8972B5D8D4F00128D85 /* Project object */;
+          }
+          EOF
+      
+      - name: Build app
         run: |
-          xcodebuild -scheme ShutdownApp \
-                    -project ShutdownApp.xcodeproj \
+          cd ShutdownApp
+          xcodebuild -project ShutdownApp.xcodeproj \
+                    -scheme ShutdownApp \
                     -configuration Release \
                     -sdk iphoneos \
+                    -arch arm64 \
                     CODE_SIGN_IDENTITY="" \
                     CODE_SIGNING_REQUIRED=NO \
+                    ONLY_ACTIVE_ARCH=NO \
+                    VALID_ARCHS=arm64 \
                     build
-                    
-      - name: Upload app
+      
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-app
-          path: build/Release-iphoneos/ShutdownApp.app
+          path: ShutdownApp/build/Release-iphoneos/ShutdownApp.app
