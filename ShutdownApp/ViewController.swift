@@ -64,6 +64,7 @@ class ViewController: UIViewController {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         } catch {
+            print("Payload Serialization Error: \(error.localizedDescription)")
             showAlert(message: "Error creating request: \(error.localizedDescription)")
             return
         }
