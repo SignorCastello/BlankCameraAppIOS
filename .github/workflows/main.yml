@@ -3,32 +3,30 @@ name: Build Unsigned iOS App
 on:
   push:
     branches:
-      - main # Trigger on pushes to the main branch
+      - main
   pull_request:
     branches:
-      - main # Trigger on pull requests to the main branch
+      - main
 
 jobs:
   build-ios:
-    runs-on: macos-latest # Use macOS runner for iOS builds
+    runs-on: macos-latest
 
     steps:
-      # Step 1: Check out the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Xcode environment
       - name: Set up Xcode
-        uses: maxim-lobanov/setup-xcode@v2
-        with:
-          xcode-version: 14 # Adjust Xcode version as needed
+        uses: maxim-lobanov/setup-xcode@v1 
+        
+      - name: Clean build directory
+        run: rm -rf build
 
-      # Step 4: Build the app and generate an unsigned .ipa file
       - name: Build the app
         run: |
           xcodebuild \
-            -workspace ShutdownApp.xcodeproj \
-            -scheme ShutdownApp \              
+            -project BlankCameraAppIOS/ShutdownApp.xcodeproj \
+            -scheme ShutdownApp \
             -sdk iphoneos \
             -configuration Release \
             -archivePath ${{ github.workspace }}/build/App.xcarchive \
@@ -39,7 +37,25 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             IPHONEOS_DEPLOYMENT_TARGET=12.5.7
 
-      # Step 5: Export the unsigned .ipa file
+      - name: Create ExportOptions.plist
+        run: |
+          cat <<EOF > ${{ github.workspace }}/ExportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>ad-hoc</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+          </dict>
+          </plist>
+          EOF
+
       - name: Export the .ipa
         run: |
           xcodebuild \
@@ -51,7 +67,6 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      # Step 6: Upload the unsigned .ipa file as an artifact
       - name: Upload unsigned .ipa
         uses: actions/upload-artifact@v3
         with:
