@@ -23,13 +23,6 @@ jobs:
         with:
           xcode-version: 14 # Adjust Xcode version as needed
 
-      # Step 3: Install dependencies using CocoaPods (if applicable)
-      - name: Install dependencies
-        if: exists('./Podfile') # Only run if Podfile exists
-        run: |
-          brew install cocoapods
-          pod install
-
       # Step 4: Build the app and generate an unsigned .ipa file
       - name: Build the app
         run: |
