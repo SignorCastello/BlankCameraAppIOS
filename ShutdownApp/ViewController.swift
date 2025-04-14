@@ -3,7 +3,7 @@ import AVFoundation
 
 class ViewController: UIViewController {
     private let shutdownButton = UIButton(type: .system)
-    private var serverURL = "http://your-server-ip:5000/shutdown"
+    private var serverURL = "http://192.168.1.44:5000/shutdown"
     private let urlTextField = UITextField()
     
     override func viewDidLoad() {
