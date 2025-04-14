@@ -1,0 +1,40 @@
+name: Run XcodeGen
+
+on:
+  push:
+    branches:
+      - main # Trigger on pushes to the main branch
+  pull_request:
+    branches:
+      - main # Trigger on pull requests to the main branch
+
+jobs:
+  generate-xcode-project:
+    runs-on: macos-latest # Use macOS as XcodeGen requires Xcode
+
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Install XcodeGen
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # Step 3: Generate the Xcode project
+      - name: Generate .xcodeproj
+        run: xcodegen generate --spec project.yml
+
+      # Step 4: Verify the generated project
+      - name: List generated files
+        run: ls -la
+
+      # Optional Step 5: Commit and push the generated .xcodeproj (if needed)
+      - name: Commit and Push Changes
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add *.xcodeproj
+          git commit -m "Generate Xcode project file"
+          git push
