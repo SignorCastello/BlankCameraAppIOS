@@ -1,0 +1,26 @@
+name: ShutdownApp
+options:
+  bundleIdPrefix: com.yourorganization
+  deploymentTarget:
+    iOS: '12.5'
+targets:
+  ShutdownApp:
+    type: application
+    platform: iOS
+    sources:
+      - ShutdownApp # Replace with the path to your source files
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        IPHONEOS_DEPLOYMENT_TARGET: '12.5'
+    dependencies: []
+schemes:
+  ShutdownApp:
+    build:
+      targets:
+        ShutdownApp:
+          buildTypes: [debug, release]
+    run:
+      configuration: debug
